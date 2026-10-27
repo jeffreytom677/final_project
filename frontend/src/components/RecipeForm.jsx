@@ -4,14 +4,16 @@ import { AlertCircle, Clock, Save, ArrowLeft } from 'lucide-react';
 
 const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'];
 
+const DEFAULT_FORM_VALUES = {
+  name: '',
+  category: 'Dinner',
+  ingredients: '',
+  steps: '',
+  cookingTime: ''
+};
+
 const RecipeForm = ({
-  initialValues = {
-    name: '',
-    category: 'Dinner',
-    ingredients: '',
-    steps: '',
-    cookingTime: ''
-  },
+  initialValues = DEFAULT_FORM_VALUES,
   onSubmit,
   isSubmitting = false,
   isEditMode = false
@@ -19,19 +21,19 @@ const RecipeForm = ({
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    name: initialValues.name || '',
-    category: initialValues.category || 'Dinner',
-    ingredients: initialValues.ingredients || '',
-    steps: initialValues.steps || '',
-    cookingTime: initialValues.cookingTime !== undefined ? initialValues.cookingTime : ''
+    name: initialValues?.name || '',
+    category: initialValues?.category || 'Dinner',
+    ingredients: initialValues?.ingredients || '',
+    steps: initialValues?.steps || '',
+    cookingTime: initialValues?.cookingTime !== undefined ? initialValues.cookingTime : ''
   });
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
 
-  // Sync if initialValues load asynchronously (e.g. edit mode prefill)
+  // Sync only in edit mode when initialValues is loaded or changes
   useEffect(() => {
-    if (initialValues) {
+    if (isEditMode && initialValues && initialValues !== DEFAULT_FORM_VALUES) {
       setFormData({
         name: initialValues.name || '',
         category: initialValues.category || 'Dinner',
@@ -40,7 +42,7 @@ const RecipeForm = ({
         cookingTime: initialValues.cookingTime !== undefined ? initialValues.cookingTime : ''
       });
     }
-  }, [initialValues]);
+  }, [initialValues, isEditMode]);
 
   // Client-side validation logic
   const validate = (values) => {
