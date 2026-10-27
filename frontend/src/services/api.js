@@ -1,7 +1,10 @@
 import axios from 'axios';
 
-// Base URL configured from frontend/.env: VITE_API_URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Base URL: uses VITE_API_URL if provided, otherwise falls back to /api in production or localhost:5000 in dev
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== 'http://localhost:5000/api'
+    ? import.meta.env.VITE_API_URL
+    : (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
 
 const api = axios.create({
   baseURL: API_BASE_URL,

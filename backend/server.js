@@ -1,8 +1,9 @@
 const path = require('path');
 const dotenv = require('dotenv');
 
-// Load environment variables from backend/.env
+// Load environment variables from backend/.env or root .env
 dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const express = require('express');
 const cors = require('cors');
@@ -15,7 +16,7 @@ const PORT = process.env.PORT || 5000;
 
 // Enable CORS for frontend
 app.use(cors({
-  origin: '*', // Allow requests from any origin or React dev server
+  origin: '*', // Allow requests from any origin or deployed frontend
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -34,7 +35,25 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint
+// Ensure MongoDB is connected before handling requests (required for serverless/Vercel)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Health check and root API endpoints
+app.get('/api', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'CulinaryCraft Recipe Book API is live',
+    version: '1.0.0'
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -52,7 +71,7 @@ app.use(notFoundHandler);
 // Centralized Error Handling Middleware
 app.use(errorHandler);
 
-// Start server after connecting to database
+// Start server after connecting to database (only in non-serverless / local environments)
 let server;
 
 const startServer = async () => {
@@ -88,6 +107,11 @@ const handleShutdown = async (signal) => {
 process.on('SIGINT', () => handleShutdown('SIGINT'));
 process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 
-startServer();
+// Only start standalone listener if not running on Vercel
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
+  startServer();
+} else if (!process.env.VERCEL) {
+  startServer();
+}
 
 module.exports = app;

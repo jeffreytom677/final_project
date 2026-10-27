@@ -3,6 +3,7 @@ const { Recipe } = require('../models/Recipe');
 const sampleRecipes = require('../scripts/sampleRecipes');
 
 let memoryServerInstance = null;
+let cachedConn = null;
 
 /**
  * Automatically seeds the database if empty
@@ -24,8 +25,13 @@ const seedDatabaseIfEmpty = async () => {
 
 /**
  * Connect to MongoDB Atlas, local MongoDB, or in-memory fallback
+ * Includes connection caching for Vercel/serverless environments
  */
 const connectDB = async () => {
+  if (cachedConn && mongoose.connection.readyState >= 1) {
+    return cachedConn;
+  }
+
   let uri = process.env.MONGO_URI;
   const isPlaceholder = !uri || uri.includes('<username>') || uri.includes('<password>');
 
@@ -47,9 +53,13 @@ const connectDB = async () => {
 
   try {
     mongoose.set('strictQuery', false);
-    const conn = await mongoose.connect(uri);
+    const conn = await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000
+    });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host} (DB: ${conn.connection.name})`);
+    cachedConn = conn;
 
     // Check and seed if empty
     await seedDatabaseIfEmpty();
@@ -57,7 +67,10 @@ const connectDB = async () => {
     return conn;
   } catch (error) {
     console.error(`❌ MongoDB connection error: ${error.message}`);
-    process.exit(1);
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+    throw error;
   }
 };
 
@@ -66,6 +79,7 @@ const connectDB = async () => {
  */
 const disconnectDB = async () => {
   try {
+    cachedConn = null;
     await mongoose.connection.close();
     if (memoryServerInstance) {
       await memoryServerInstance.stop();
